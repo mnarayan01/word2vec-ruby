@@ -1,0 +1,16 @@
+# `bundle` related stuff.
+/.bundle
+/Gemfile.lock
+
+# `yard` generated docs.
+/doc
+/.yardoc
+
+# Native DLLs.
+/lib/word2vec/native_model.*
+
+# Gem build directory.
+/pkg/
+
+# Temporary files.
+/tmp

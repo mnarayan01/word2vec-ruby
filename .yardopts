@@ -1,0 +1,12 @@
+--markup-provider=redcarpet
+--markup=markdown
+
+--output-dir=./doc
+
+--main=./README.md
+
+--protected
+--private
+
+./ext/**/*.c
+./lib/**/*.rb
