@@ -147,6 +147,11 @@ static bool word2vec_model_nearest_neighbors(
 static VALUE rb_eWord2VecParseError;
 static VALUE rb_eWord2VecQueryError;
 
+static ID rb_idAtVectors;
+static ID rb_idAtVocabulary;
+static ID rb_idDefaultNeighborsCount;
+static VALUE rb_symNeighborsCount;
+
 static void native_model_deallocate(word2vec_model *model) {
   if (model != NULL) {
     if (model->vocabulary != NULL) {
@@ -271,14 +276,17 @@ static VALUE native_model_parse(int argc, VALUE* argv, VALUE self) {
 }
 
 /*
- * Returns the position of the provided `word`, ranked by descending occurrence count in the training set.
+ * An implementation of {#index}.
  *
- * @overload index(word)
+ * @note When a single instance will be used to look up more than a small number of words, it will generally be more
+ *   efficient to use {#index_mapped}.
+ *
+ * @overload index_direct(word)
  *   @param [String] word
  *
  * @return [Integer, nil]
  */
-static VALUE native_model_index(VALUE self, VALUE rb_word)
+static VALUE native_model_index_direct(VALUE self, VALUE rb_word)
 {
   word2vec_model *model;
   ssize_t ret;
@@ -328,9 +336,9 @@ static VALUE native_model_nearest_neighbors(int argc, VALUE* argv, VALUE self) {
   }
   Check_Type(rb_options, T_HASH);
 
-  rb_neighbors_count = rb_hash_lookup(rb_options, ID2SYM(rb_intern("neighbors_count")));
+  rb_neighbors_count = rb_hash_lookup(rb_options, rb_symNeighborsCount);
   if (NIL_P(rb_neighbors_count)) {
-    rb_neighbors_count = rb_const_get_from(rb_obj_class(self), rb_intern("DEFAULT_NEIGHBORS_COUNT"));
+    rb_neighbors_count = rb_const_get_from(rb_obj_class(self), rb_idDefaultNeighborsCount);
   }
   Check_Type(rb_neighbors_count, T_FIXNUM);
   neighbors_count = NUM2LONG(rb_neighbors_count);
@@ -370,13 +378,19 @@ static VALUE native_model_nearest_neighbors(int argc, VALUE* argv, VALUE self) {
 }
 
 /*
- * @note _Purely_ for debugging purposes as it is **extremely** inefficient.
+ * @note Purely for introspective purposes: Returns a _copy_ of the values used in {#nearest_neighbors}.
+ *
+ * @note This value is lazily-evaluated and memoized.
  *
  * @return [Array<Array<Float>>]
  */
 static VALUE native_model_vectors(VALUE self) {
   word2vec_model *model;
   VALUE rb_vectors;
+
+  if (!NIL_P((rb_vectors = rb_ivar_get(self, rb_idAtVectors)))) {
+    return rb_vectors;
+  }
 
   Data_Get_Struct(self, word2vec_model, model);
 
@@ -390,10 +404,10 @@ static VALUE native_model_vectors(VALUE self) {
       rb_ary_store(rb_vector, j, DBL2NUM(vector[j]));
     }
 
-    rb_ary_store(rb_vectors, i, rb_vector);
+    rb_ary_store(rb_vectors, i, rb_ary_freeze(rb_vector));
   }
 
-  return rb_vectors;
+  return rb_ivar_set(self, rb_idAtVectors, rb_ary_freeze(rb_vectors));
 }
 
 /*
@@ -409,7 +423,9 @@ static VALUE native_model_vector_dimensionality(VALUE self)
 }
 
 /*
- * @note _Purely_ for debugging purposes as it is **extremely** inefficient.
+ * @note Purely for introspective purposes: Returns a _copy_ of the values used in {#nearest_neighbors}.
+ *
+ * @note This value is lazily-evaluated and memoized.
  *
  * @return [Array<String>]
  */
@@ -417,15 +433,19 @@ static VALUE native_model_vocabulary(VALUE self) {
   word2vec_model *model;
   VALUE rb_vocabulary;
 
+  if (!NIL_P((rb_vocabulary = rb_ivar_get(self, rb_idAtVocabulary)))) {
+    return rb_vocabulary;
+  }
+
   Data_Get_Struct(self, word2vec_model, model);
 
   rb_vocabulary = rb_ary_new_capa(model->vocabulary_length);
 
   for (size_t i = 0; i < model->vocabulary_length; i++) {
-    rb_ary_store(rb_vocabulary, i, rb_utf8_str_new_cstr(model->vocabulary[i]));
+    rb_ary_store(rb_vocabulary, i, rb_str_freeze(rb_utf8_str_new_cstr(model->vocabulary[i])));
   }
 
-  return rb_vocabulary;
+  return rb_ivar_set(self, rb_idAtVocabulary, rb_ary_freeze(rb_vocabulary));
 }
 
 /*
@@ -452,6 +472,11 @@ void Init_native_model(void) {
   VALUE rb_cWord2VecModel;
   VALUE rb_cWord2VecNativeModel;
 
+  rb_idAtVectors = rb_intern("@vectors");
+  rb_idAtVocabulary = rb_intern("@vocabulary");
+  rb_idDefaultNeighborsCount = rb_intern("DEFAULT_NEIGHBORS_COUNT");
+  rb_symNeighborsCount = ID2SYM(rb_intern("neighbors_count"));
+
   rb_require("word2vec/errors");
   rb_require("word2vec/model");
   rb_mWord2Vec = rb_define_module("Word2Vec");
@@ -465,7 +490,7 @@ void Init_native_model(void) {
 
   rb_define_singleton_method(rb_cWord2VecNativeModel, "parse", native_model_parse, -1);
 
-  rb_define_method(rb_cWord2VecNativeModel, "index", native_model_index, 1);
+  rb_define_method(rb_cWord2VecNativeModel, "index_direct", native_model_index_direct, 1);
   rb_define_method(rb_cWord2VecNativeModel, "nearest_neighbors", native_model_nearest_neighbors, -1);
   rb_define_method(rb_cWord2VecNativeModel, "vectors", native_model_vectors, 0);
   rb_define_method(rb_cWord2VecNativeModel, "vector_dimensionality", native_model_vector_dimensionality, 0);

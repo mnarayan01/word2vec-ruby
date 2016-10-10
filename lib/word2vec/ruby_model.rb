@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "scanf"
+require "set"
 
 require "word2vec/errors"
 require "word2vec/model"
@@ -90,13 +91,6 @@ module Word2Vec
 
       @vector_dimensionality = vectors.first.length
       raise ArgumentError unless vectors.all? { |vector| vector.length == vector_dimensionality }
-
-      @vocabulary_to_vector_index_map = @vocabulary.map.with_index do |word, idx|
-        [
-          word,
-          idx
-        ]
-      end.to_h.freeze
     end
 
     # @return [Array<Array<Float>>]
@@ -121,23 +115,6 @@ module Word2Vec
       vocabulary.length
     end
 
-    # Index of each word from {#vocabulary} in {#vectors}. Since `word2vec` sorts by occurrence count, this will be how
-    # popular the word is.
-    #
-    # @return [Hash<String, Integer>]
-    #
-    # @!attribute [r] vocabulary_to_vector_index_map
-    attr_reader :vocabulary_to_vector_index_map
-
-    # Returns the position of the provided `word`, ranked by descending occurrence count in the training set.
-    #
-    # @param [String] word
-    #
-    # @return [Integer, nil]
-    def index(word)
-      vocabulary_to_vector_index_map[word]
-    end
-
     # @param [Array<String>] search_terms
     #
     # @option options [Integer] :neighbors_count (DEFAULT_NEIGHBORS_COUNT)
@@ -150,7 +127,7 @@ module Word2Vec
       #
       # @type [Set<Integer>]
       search_terms_indicies = search_terms.map do |term|
-        vocabulary_to_vector_index_map.fetch(term) { raise QueryError, "Out of dictionary word: #{term}" }
+        word_to_index_map.fetch(term) { raise QueryError, "Out of dictionary word: #{term}" }
       end.to_set
 
       # @type [Array<Float>]
