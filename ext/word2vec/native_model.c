@@ -69,7 +69,7 @@ typedef struct word2vec_model_nearest_neighbor_result_s {
 static bool word2vec_model_nearest_neighbors(
   const word2vec_model *model,
   size_t search_terms_count,
-  const char *search_terms[],
+  size_t search_terms_indicies[],
   size_t neighbors_count,
   word2vec_model_nearest_neighbor_result top_n_neighbors[]
 ) {
@@ -82,28 +82,15 @@ static bool word2vec_model_nearest_neighbors(
     top_n_neighbors[i].score = 0.0;
   }
 
-  ssize_t search_terms_indicies[search_terms_count];
-  for (size_t i = 0; i < search_terms_count; i++) {
-    ssize_t index = search_terms_indicies[i] = word2vec_model_index(model, search_terms[i]);
-
-    if (index < 0) {
-      return false;
-    }
-  }
-
   float search_vector[model->vector_dimensionality];
   for (size_t i = 0; i < model->vector_dimensionality; i++) {
     search_vector[i] = 0.0;
   }
   for (size_t i = 0; i < search_terms_count; i++) {
-    ssize_t index = search_terms_indicies[i];
+    const float *vector = model->vectors + search_terms_indicies[i] * model->vector_dimensionality;
 
-    if (index >= 0) {
-      const float *vector = model->vectors + index * model->vector_dimensionality;
-
-      for (size_t j = 0; j < model->vector_dimensionality; j++) {
-        search_vector[j] += vector[j];
-      }
+    for (size_t j = 0; j < model->vector_dimensionality; j++) {
+      search_vector[j] += vector[j];
     }
   }
   if (!normalize_vector(search_vector, model->vector_dimensionality)) {
@@ -112,7 +99,7 @@ static bool word2vec_model_nearest_neighbors(
 
   for (size_t i = 0; i < model->vocabulary_length; i++) {
     for (size_t j = 0; j < search_terms_count; j++) {
-      if ((size_t) search_terms_indicies[j] == i) {
+      if (search_terms_indicies[j] == i) {
         goto continue_outer;
       }
     }
@@ -150,6 +137,8 @@ static VALUE rb_eWord2VecQueryError;
 static ID rb_idAtVectors;
 static ID rb_idAtVocabulary;
 static ID rb_idDefaultNeighborsCount;
+static ID rb_idIndexMapped;
+static VALUE rb_symIndexDirect;
 static VALUE rb_symNeighborsCount;
 
 static void native_model_deallocate(word2vec_model *model) {
@@ -305,9 +294,10 @@ static VALUE native_model_index_direct(VALUE self, VALUE rb_word)
 }
 
 /*
- * @overload nearest_neighbors(search_terms, neighbors_count: DEFAULT_NEIGHBORS_COUNT)
+ * @overload nearest_neighbors(search_terms, index_direct: false, neighbors_count: DEFAULT_NEIGHBORS_COUNT)
  *   @param [Array<String>] search_terms
- *   @option options [Integer] :neighbors_count (DEFAULT_NEIGHBORS_COUNT)
+ *   @param [Boolean] :index_direct Will use {#index_direct} if set; {#index_mapped} otherwise.
+ *   @param [Integer] :neighbors_count
  *
  * @return [Hash<String, Float>]
  */
@@ -318,8 +308,9 @@ static VALUE native_model_nearest_neighbors(int argc, VALUE* argv, VALUE self) {
   VALUE rb_search_terms;
   VALUE rb_options;
   VALUE rb_neighbors_count;
-  long search_terms_count;
-  long neighbors_count;
+  ssize_t search_terms_count;
+  bool index_direct_flag;
+  ssize_t neighbors_count;
 
   Data_Get_Struct(self, word2vec_model, model);
 
@@ -327,7 +318,10 @@ static VALUE native_model_nearest_neighbors(int argc, VALUE* argv, VALUE self) {
 
   Check_Type(rb_search_terms, T_ARRAY);
   search_terms_count = RARRAY_LEN(rb_search_terms);
-  for (long i = 0; i < search_terms_count; i++) {
+  if (search_terms_count <= 0) {
+    rb_raise(rb_eArgError, "search_terms may not be empty");
+  }
+  for (ssize_t i = 0; i < search_terms_count; i++) {
     Check_Type(rb_ary_entry(rb_search_terms, i), T_STRING);
   }
 
@@ -336,38 +330,55 @@ static VALUE native_model_nearest_neighbors(int argc, VALUE* argv, VALUE self) {
   }
   Check_Type(rb_options, T_HASH);
 
+  index_direct_flag = RTEST(rb_hash_lookup(rb_options, rb_symIndexDirect));
+
   rb_neighbors_count = rb_hash_lookup(rb_options, rb_symNeighborsCount);
   if (NIL_P(rb_neighbors_count)) {
     rb_neighbors_count = rb_const_get_from(rb_obj_class(self), rb_idDefaultNeighborsCount);
   }
   Check_Type(rb_neighbors_count, T_FIXNUM);
-  neighbors_count = NUM2LONG(rb_neighbors_count);
+  neighbors_count = NUM2SSIZET(rb_neighbors_count);
+  if (neighbors_count <= 0) {
+    rb_raise(rb_eArgError, ":neighbors_count must be greater than 0");
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   // Main logic.
 
-  const char *search_terms[search_terms_count];
+  size_t search_terms_indicies[search_terms_count];
   word2vec_model_nearest_neighbor_result neighbors[neighbors_count];
 
-  for (long i = 0; i < search_terms_count; i++) {
+  for (ssize_t i = 0; i < search_terms_count; i++) {
     VALUE rb_term = rb_ary_entry(rb_search_terms, i);
+    VALUE rb_index;
 
-    search_terms[i] = StringValueCStr(rb_term);
+    if (index_direct_flag) {
+      rb_index = native_model_index_direct(self, rb_term);
+    } else {
+      rb_index = rb_funcall(self, rb_idIndexMapped, 1, rb_term);
+    }
+
+    if (NIL_P(rb_index)) {
+      rb_raise(rb_eWord2VecQueryError, "Query error.");
+    }
+
+    search_terms_indicies[i] = NUM2SIZET(rb_index);
   }
 
   // OPTIMIZE: If we want to make this multi-threaded, this call should be made via `rb_thread_call_without_gvl`, but
   //   for now leaving as is until it becomes a bottleneck.
-  if (!word2vec_model_nearest_neighbors(model, search_terms_count, search_terms, neighbors_count, neighbors)) {
+  if (!word2vec_model_nearest_neighbors(model, search_terms_count, search_terms_indicies, neighbors_count, neighbors)) {
     rb_raise(rb_eWord2VecQueryError, "Query error.");
   }
 
   VALUE rb_ret = rb_hash_new();
 
-  for (long i = 0; i < neighbors_count; i++) {
+  for (ssize_t i = 0; i < neighbors_count; i++) {
     const char *word = neighbors[i].word;
 
     if (neighbors[i].word != NULL) {
-      VALUE rb_word = rb_str_new_cstr(word);
+      // OPTIMIZE: Potentially we could pull the string out of `native_model_vocabulary` and thus avoid an allocation.
+      VALUE rb_word = rb_str_freeze(rb_utf8_str_new_cstr(word));
       VALUE rb_score = DBL2NUM(neighbors[i].score);
 
       rb_hash_aset(rb_ret, rb_word, rb_score);
@@ -475,6 +486,8 @@ void Init_native_model(void) {
   rb_idAtVectors = rb_intern("@vectors");
   rb_idAtVocabulary = rb_intern("@vocabulary");
   rb_idDefaultNeighborsCount = rb_intern("DEFAULT_NEIGHBORS_COUNT");
+  rb_idIndexMapped = rb_intern("index_mapped");
+  rb_symIndexDirect = ID2SYM(rb_intern("index_direct"));
   rb_symNeighborsCount = ID2SYM(rb_intern("neighbors_count"));
 
   rb_require("word2vec/errors");

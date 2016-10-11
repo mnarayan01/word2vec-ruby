@@ -123,10 +123,13 @@ module Word2Vec
     #
     # @param [Array<String>] search_terms
     #
+    # @param [Hash] options Additional implementation dependent options.
     # @option options [Integer] :neighbors_count (DEFAULT_NEIGHBORS_COUNT)
     #
     # @return [Hash<String, Float>]
-    def nearest_neighbors(search_terms, neighbors_count: DEFAULT_NEIGHBORS_COUNT)
+    def nearest_neighbors(search_terms, neighbors_count: DEFAULT_NEIGHBORS_COUNT, **options)
+      # OPTIMIZE: Supporting passing the indicies of the `search_terms` in directly would provide some performance
+      #   increase in certain situations.
       fail NotImplementedError
     end
 
