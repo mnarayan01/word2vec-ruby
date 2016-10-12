@@ -109,10 +109,9 @@ module Word2Vec
     # Corresponds to https://github.com/makeshifthoop/word2vec/blob/0733bf26/src/distance.c#L39-L61.
     #
     # @param [String, IO] filename
-    #
-    # @option options [Encoding] :encoding (Encoding::UTF_8)
-    # @option options [Boolean] :normalize (true)
-    # @option options [Boolean] :validate_encoding (false)
+    # @param [Encoding] encoding
+    # @param [Boolean] normalize
+    # @param [Boolean] validate_encoding
     #
     # @return [ReferenceModel]
     def self.parse(filename, encoding: Encoding::UTF_8, normalize: true, validate_encoding: false)
@@ -194,9 +193,7 @@ module Word2Vec
     #   [`st1` variable](https://github.com/makeshifthoop/word2vec/blob/0733bf26/src/distance.c#L27)
     #   [here](https://github.com/makeshifthoop/word2vec/blob/0733bf26/src/distance.c#L76-L91). In the original, the
     #   `cn` variable corresponds to the length of this array.
-    #
-    # @option options [Integer] :neighbors_count (DEFAULT_NEIGHBORS_COUNT) Corresponds to the
-    #   [`N` constant](https://github.com/makeshifthoop/word2vec/blob/0733bf26/src/distance.c#L22).
+    # @param [Integer] neighbors_count Corresponds to the [`N` constant](https://github.com/makeshifthoop/word2vec/blob/0733bf26/src/distance.c#L22).
     #
     # @return [Hash<String, Float>]
     def nearest_neighbors(st, neighbors_count: DEFAULT_NEIGHBORS_COUNT)

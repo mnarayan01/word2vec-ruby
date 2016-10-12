@@ -115,9 +115,8 @@ module Word2Vec
     # @abstract
     #
     # @param [Array<String>] search_terms
-    #
+    # @param [Integer] neighbors_count
     # @param [Hash] options Additional implementation dependent options.
-    # @option options [Integer] :neighbors_count (DEFAULT_NEIGHBORS_COUNT)
     #
     # @return [Hash<String, Float>]
     def nearest_neighbors(search_terms, neighbors_count: DEFAULT_NEIGHBORS_COUNT, **options)

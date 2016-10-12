@@ -41,10 +41,9 @@ module Word2Vec
     SIZE_OF_FLOAT = [1].pack("f").bytesize
 
     # @param [IO] io
-    #
-    # @option options [Encoding] :encoding (Encoding::UTF_8)
-    # @option options [Boolean] :normalize (true)
-    # @option options [Boolean] :validate_encoding (false)
+    # @param [Encoding] encoding
+    # @param [Boolean] normalize
+    # @param [Boolean] validate_encoding
     #
     # @return [RubyModel]
     def self.parse(io, encoding: Encoding::UTF_8, normalize: true, validate_encoding: false)
@@ -116,8 +115,7 @@ module Word2Vec
     end
 
     # @param [Array<String>] search_terms
-    #
-    # @option options [Integer] :neighbors_count (DEFAULT_NEIGHBORS_COUNT)
+    # @param [Integer] neighbors_count
     #
     # @return [Hash<String, Float>]
     def nearest_neighbors(search_terms, neighbors_count: DEFAULT_NEIGHBORS_COUNT)
