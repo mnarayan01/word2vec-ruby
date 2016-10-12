@@ -93,23 +93,15 @@ module Word2Vec
     end
 
     # @return [Array<Array<Float>>]
-    #
-    # @!attribute [r] vectors
     attr_reader :vectors
 
     # @return [Integer]
-    #
-    # @!attribute [r] vector_dimensionality
     attr_reader :vector_dimensionality
 
     # @return [Array<String>]
-    #
-    # @!attribute [r] vocabulary
     attr_reader :vocabulary
 
     # @return [Integer]
-    #
-    # @!attribute [r] vocabulary_length
     def vocabulary_length
       vocabulary.length
     end

@@ -166,25 +166,17 @@ module Word2Vec
     end
 
     # @return [Integer]
-    #
-    # @!attribute [r] words
     attr_reader :words
 
     # @return [Integer]
-    #
-    # @!attribute [r] size
     attr_reader :size
 
     # @return [Array<String>]
-    #
-    # @!attribute [r] vocab
     attr_reader :vocab
 
     # Corresponds to the [`M` variable](https://github.com/makeshifthoop/word2vec/blob/0733bf26/src/distance.c#L33).
     #
     # @return [Array<Array<Float>>]
-    #
-    # @!attribute [r] vectors
     attr_reader :vectors
 
     # Corresponds to https://github.com/makeshifthoop/word2vec/blob/0733bf26/src/distance.c#L92-L132.
