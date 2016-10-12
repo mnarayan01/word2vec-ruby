@@ -80,21 +80,15 @@ module Word2Vec
     # will be how popular the `word` is. Further, as {#vocabulary} and {#vectors} are synced, this will also be the
     # index of the word in {#vectors}.
     #
-    # Uses either {#index_direct} or {#index_mapped} based on the value of the `:direct` option. The semantics of the
-    # function should remain the same either way, but the efficiency may differ based upon the implementing class. See
-    # said methods for additional information.
+    # Initially this simply calls {#index_mapped}, but inheriting classes could potentially override it to use e.g.
+    # {#index_direct} (though nothing currently does). Note that {NativeModel#nearest_neighbors} calls {#index_mapped}
+    # directly, so overriding this will not affect {NativeModel#nearest_neighbors}.
     #
     # @param [String] word
     #
-    # @option options [Boolean] :direct (false)
-    #
     # @return [Integer, nil]
-    def index(word, direct: false)
-      if direct
-        index_direct(word)
-      else
-        index_mapped(word)
-      end
+    def index(word)
+      index_mapped(word)
     end
 
     # One implementation of {#index}. Initially this simply calls {#index_mapped}, but inheriting classes my override
