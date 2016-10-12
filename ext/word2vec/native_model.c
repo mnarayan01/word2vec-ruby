@@ -62,7 +62,7 @@ static ssize_t word2vec_model_index(const word2vec_model *model, const char *wor
 }
 
 typedef struct word2vec_model_nearest_neighbor_result_s {
-  const char *word;
+  ssize_t word_index;
   float score;
 } word2vec_model_nearest_neighbor_result;
 
@@ -78,7 +78,7 @@ static bool word2vec_model_nearest_neighbors(
   }
 
   for (size_t i = 0; i < neighbors_count; i++) {
-    top_n_neighbors[i].word = NULL;
+    top_n_neighbors[i].word_index = -1;
     top_n_neighbors[i].score = 0.0;
   }
 
@@ -115,11 +115,11 @@ static bool word2vec_model_nearest_neighbors(
       if (score > top_n_neighbors[j].score) {
         for (size_t k = neighbors_count - 1; k > j; k--) {
           top_n_neighbors[k].score = top_n_neighbors[k - 1].score;
-          top_n_neighbors[k].word = top_n_neighbors[k - 1].word;
+          top_n_neighbors[k].word_index = top_n_neighbors[k - 1].word_index;
         }
 
         top_n_neighbors[j].score = score;
-        top_n_neighbors[j].word = model->vocabulary[i];
+        top_n_neighbors[j].word_index = i;
 
         break;
       }
@@ -374,11 +374,11 @@ static VALUE native_model_nearest_neighbors(int argc, VALUE* argv, VALUE self) {
   VALUE rb_ret = rb_hash_new();
 
   for (ssize_t i = 0; i < neighbors_count; i++) {
-    const char *word = neighbors[i].word;
+    ssize_t word_index = neighbors[i].word_index;
 
-    if (neighbors[i].word != NULL) {
+    if (word_index >= 0) {
       // OPTIMIZE: Potentially we could pull the string out of `native_model_vocabulary` and thus avoid an allocation.
-      VALUE rb_word = rb_str_freeze(rb_utf8_str_new_cstr(word));
+      VALUE rb_word = rb_str_freeze(rb_utf8_str_new_cstr(model->vocabulary[word_index]));
       VALUE rb_score = DBL2NUM(neighbors[i].score);
 
       rb_hash_aset(rb_ret, rb_word, rb_score);
