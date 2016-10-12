@@ -137,7 +137,7 @@ static VALUE rb_eWord2VecQueryError;
 static ID rb_idAtVectors;
 static ID rb_idAtVocabulary;
 static ID rb_idDefaultNeighborsCount;
-static ID rb_idIndexMapped;
+static ID rb_idIndex;
 static VALUE rb_symIndexDirect;
 static VALUE rb_symNeighborsCount;
 
@@ -296,7 +296,7 @@ static VALUE native_model_index_direct(VALUE self, VALUE rb_word)
 /*
  * @overload nearest_neighbors(search_terms, index_direct: false, neighbors_count: DEFAULT_NEIGHBORS_COUNT)
  *   @param [Array<String>] search_terms
- *   @param [Boolean] :index_direct Will use {#index_direct} if set; {#index_mapped} otherwise.
+ *   @param [Boolean] :index_direct Will use {#index_direct} if set; {#index} otherwise.
  *   @param [Integer] :neighbors_count
  *
  * @return [Hash<String, Float>]
@@ -355,7 +355,7 @@ static VALUE native_model_nearest_neighbors(int argc, VALUE* argv, VALUE self) {
     if (index_direct_flag) {
       rb_index = native_model_index_direct(self, rb_term);
     } else {
-      rb_index = rb_funcall(self, rb_idIndexMapped, 1, rb_term);
+      rb_index = rb_funcall(self, rb_idIndex, 1, rb_term);
     }
 
     if (NIL_P(rb_index)) {
@@ -486,7 +486,7 @@ void Init_native_model(void) {
   rb_idAtVectors = rb_intern("@vectors");
   rb_idAtVocabulary = rb_intern("@vocabulary");
   rb_idDefaultNeighborsCount = rb_intern("DEFAULT_NEIGHBORS_COUNT");
-  rb_idIndexMapped = rb_intern("index_mapped");
+  rb_idIndex = rb_intern("index");
   rb_symIndexDirect = ID2SYM(rb_intern("index_direct"));
   rb_symNeighborsCount = ID2SYM(rb_intern("neighbors_count"));
 

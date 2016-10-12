@@ -81,8 +81,7 @@ module Word2Vec
     # index of the word in {#vectors}.
     #
     # Initially this simply calls {#index_mapped}, but inheriting classes could potentially override it to use e.g.
-    # {#index_direct} (though nothing currently does). Note that {NativeModel#nearest_neighbors} calls {#index_mapped}
-    # directly, so overriding this will not affect {NativeModel#nearest_neighbors}.
+    # {#index_direct} (though nothing currently does).
     #
     # @param [String] word
     #
