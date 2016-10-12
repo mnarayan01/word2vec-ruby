@@ -225,7 +225,7 @@ static VALUE native_model_parse(int argc, VALUE* argv, VALUE self) {
 
   model = ZALLOC(word2vec_model);
 
-  if (fscanf(f, "%zd%zd", &model->vocabulary_length, &model->vector_dimensionality) != 2) {
+  if (fscanf(f, "%zu%zu", &model->vocabulary_length, &model->vector_dimensionality) != 2) {
     native_model_parse_fail;
   }
 
