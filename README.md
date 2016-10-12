@@ -51,6 +51,22 @@ model.nearest_neighbors(%w(cat), neighbors_count: 3)
 # => { "dog" => 0.7418528199195862, "cats" => 0.711361825466156, "puppy" => 0.6765584349632263 }
 ```
 
+## Caveats
+
+### String encoding
+
+In the native `C` code, we use [`rb_utf8_str_new_cstr`](https://github.com/ruby/ruby/blob/v2_3_0/string.c#L723-L729)
+rather than [`rb_str_new_cstr`](https://github.com/ruby/ruby/blob/v2_3_0/string.c#L708-L713) to create `ruby` strings
+from `C` strings (e.g. [here](https://github.com/mnarayan01/word2vec-ruby/blob/v0.1.0/ext/word2vec/native_model.c#L381)
+and [here](https://github.com/mnarayan01/word2vec-ruby/blob/v0.1.0/ext/word2vec/native_model.c#L456)). This means that
+any strings coming out of (and, to some extent, going into) `Word2Vec::NativeModel` will (should) be marked as having
+`Encoding::UTF_8`. We do this, rather than using `Encoding::ASCII_8BIT`, as it is _generally_ more convenient.
+
+If the underlying `word2vec` model file contains strings which are not `UTF-8` encoded, then you should (hopefully?) be
+able to use `String#force_encoding` to mark them as the appropriate encoding when they come out of
+`Word2Vec::NativeModel`. If this become an issue, then it would be fairly straightforward to add an `#encoding`
+attribute to `Word2Vec::Model`, which would default to `Encoding::UTF_8` but could be set to anything else.
+
 ## `word2vec` references
 
 Some useful references on `word2vec`:
